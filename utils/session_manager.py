@@ -75,7 +75,7 @@ class SessionManager:
             current_proxy = session.proxies.get('http')
 
             try:
-                response = session.request(method, url, timeout=10, **kwargs)
+                response = session.request(method, url, timeout=30, **kwargs)
                 response.raise_for_status()  # Raises an exception for 4xx/5xx status codes
                 logger.info(f"✅ Request successful with proxy {current_proxy}.")
                 return response
