@@ -79,3 +79,11 @@ def get_offset_by_date(target_date: date) -> int:
     today = date.today()
     delta = target_date - today
     return delta.days
+
+def to_int_or_none(value):
+    if value is None or value == '':
+        return None
+    try:
+        return int(value)
+    except (ValueError, TypeError):
+        return None

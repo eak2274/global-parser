@@ -10,7 +10,7 @@ project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
 from utils.session_manager import SessionManager
-from utils.helpers import get_offset_by_date
+from utils.helpers import get_offset_by_date, to_int_or_none
 
 # --- SETUP LOGGING ---
 from utils.logger import setup_logging
@@ -71,7 +71,7 @@ def convert_to_raw_json(date: date)->None:
 
 
     if not os.path.exists(scraped_data_file_path):
-        raise FileNotFoundError(f"File not found: {scraped_data_file_path}")
+        raise FileNotFoundError(f"Scraped data file not found: {scraped_data_file_path}")
     
     tournaments = []
     current_tournament = {}
@@ -129,3 +129,68 @@ def convert_to_raw_json(date: date)->None:
 
     logger.info(f"--- Scraped basketball data for {date_prefix} successfully converted to raw json... ---")
     logger.info(f"--- Raw json data saved to {raw_json_file_path}. ---")
+
+def convert_to_nice_json(date: date)->None:
+    date_prefix = get_date_prefix(date)
+    raw_json_file_path = project_root / f"data/{date_prefix}_raw_data.json"
+    nice_json_file_path = project_root / f"data/{date_prefix}_nice_data.json"
+
+
+    if not os.path.exists(raw_json_file_path):
+        raise FileNotFoundError(f"Raw json data file not found: {raw_json_file_path}")
+    
+    logger.info(f"--- Starting to convert raw json data for {date_prefix} to nice json... ---")
+
+    nice_list = []
+
+    # Открываем файл и загружаем JSON-данные
+    with open(raw_json_file_path, "r", encoding="utf-8") as f:
+        data = json.load(f)
+        for raw in data:
+            nice = {}
+            nice['country_code'] = raw.get('ZB')
+            nice['country_name'] = raw.get('ZY')
+            nice['tourney_code'] = raw.get('ZEE')
+            nice['tourney_name'] = raw.get('ZA')
+            nice['tourney_url'] = raw.get('ZL')
+            nice['tourney_logo'] = raw.get('OAJ')
+            nice['tourney_status'] = raw.get('ZCC')
+            nice['results'] = []
+            for raw_res in raw['results']:
+                nice_res = {}
+                nice_res['game_code'] = raw_res.get('AA')
+                nice_res['game_ts'] = to_int_or_none(raw_res.get('AD'))
+                if raw_res.get('AC') == '10':
+                    nice_res['game_end'] = 'overtime'
+                else:
+                    nice_res['game_end'] = 'standard'
+                nice_res['team_1_code'] = raw_res.get('PX')
+                nice_res['team_2_code'] = raw_res.get('PY')
+                nice_res['team_1_name'] = raw_res.get('AE')
+                nice_res['team_2_name'] = raw_res.get('AF')
+                nice_res['team_1_slug'] = raw_res.get('WU')
+                nice_res['team_2_slug'] = raw_res.get('WV')
+                nice_res['team_1_abbr'] = raw_res.get('WM')
+                nice_res['team_2_abbr'] = raw_res.get('WN')
+                nice_res['team_1_game_total'] = to_int_or_none(raw_res.get('AG'))
+                nice_res['team_2_game_total'] = to_int_or_none(raw_res.get('AH'))
+                nice_res['team_1_qrtr_1_total'] = to_int_or_none(raw_res.get('BA'))
+                nice_res['team_1_qrtr_2_total'] = to_int_or_none(raw_res.get('BC'))
+                nice_res['team_1_qrtr_3_total'] = to_int_or_none(raw_res.get('BE'))
+                nice_res['team_1_qrtr_4_total'] = to_int_or_none(raw_res.get('BG'))
+                nice_res['team_1_ot_1_total'] = to_int_or_none(raw_res.get('BI'))
+                nice_res['team_2_qrtr_1_total'] = to_int_or_none(raw_res.get('BB'))
+                nice_res['team_2_qrtr_2_total'] = to_int_or_none(raw_res.get('BD'))
+                nice_res['team_2_qrtr_3_total'] = to_int_or_none(raw_res.get('BF'))
+                nice_res['team_2_qrtr_4_total'] = to_int_or_none(raw_res.get('BH'))
+                nice_res['team_2_ot_1_total'] = to_int_or_none(raw_res.get('BJ'))
+                nice_res['team_1_logo'] = raw_res.get('OA')
+                nice_res['team_2_logo'] = raw_res.get('OB')
+                nice['results'].append(nice_res)
+            nice_list.append(nice)
+
+    with open(nice_json_file_path, "w", encoding="utf-8") as f:
+        json.dump(nice_list, f, ensure_ascii=False, indent=4)
+
+    logger.info(f"--- Raw json data for {date_prefix} successfully converted to nice json... ---")
+    logger.info(f"--- Nice json data saved to {nice_json_file_path}. ---")
