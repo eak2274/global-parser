@@ -10,7 +10,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
-from utils.fs_helpers import convert_to_raw_json, scrape_daily_basket_results
+from utils.fs_helpers import convert_to_raw_json, scrape_daily_basket_results, convert_to_nice_json
 
 # --- SETUP LOGGING ---
 from utils.logger import setup_logging
@@ -39,12 +39,13 @@ def main():
         logger.error(f"CRITICAL: {e}")
         return
 
-    date_to_scrape = date(2025, 12, 7)
+    date_to_scrape = date(2025, 12, 6)
     scrape_daily_basket_results(
         session_manager=session_manager,
         date=date_to_scrape
     )
     convert_to_raw_json(date_to_scrape)
+    convert_to_nice_json(date_to_scrape)
 
 if __name__ == "__main__":
     main()

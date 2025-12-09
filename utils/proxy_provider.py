@@ -1,4 +1,6 @@
 # utils/proxy_provider.py
+# Take proxy list from here and put to proxy/proxies.txt
+# https://free-proxy-list.net/ru/ssl-proxy.html
 
 import logging
 import queue

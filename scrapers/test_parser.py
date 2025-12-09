@@ -10,4 +10,4 @@ sys.path.append(str(project_root))
 
 from utils.fs_helpers import convert_to_nice_json
 
-convert_to_nice_json(date(2025,12,7))
+convert_to_nice_json(date(2025,12,6))
