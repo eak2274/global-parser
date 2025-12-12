@@ -46,7 +46,7 @@ def scrape_data_for_date_range():
         logger.error(f"CRITICAL: {e}")
         return
 
-    for d in range(-3, 0, 1):
+    for d in range(-7, 0, 1):
         
         dt = date.today() + timedelta(days=d)
         prefix = get_date_as_str(dt)
@@ -114,8 +114,8 @@ def scrape_data_for_team():
         )
 
 def main():
-    # scrape_data_for_date_range()
-    scrape_data_for_team()
+    scrape_data_for_date_range()
+    # scrape_data_for_team()
 
 if __name__ == "__main__":
     main()
