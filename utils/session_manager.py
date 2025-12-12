@@ -7,7 +7,8 @@ from typing import Callable
 
 import requests
 
-from config import settings
+# Предполагается, что эти файлы существуют и настроены
+# from config import settings
 from .header_provider import HeaderProvider
 from .proxy_provider import ProxyProvider
 
@@ -55,18 +56,7 @@ class SessionManager:
 
     def fetch_with_retry(self, method: str, url: str, **kwargs) -> requests.Response:
         """
-        Makes an HTTP request with a smart retry mechanism for proxy failures.
-        
-        Args:
-            method: HTTP method ('GET', 'POST', etc.).
-            url: The URL to fetch.
-            **kwargs: Arguments to pass to requests.request (e.g., params, data).
-        
-        Returns:
-            requests.Response object on success.
-        
-        Raises:
-            RuntimeError: If all retries are exhausted.
+        Makes an HTTP request with a smart retry mechanism for proxy, connection, and empty response failures.
         """
         last_exception = None
         
@@ -77,19 +67,37 @@ class SessionManager:
             try:
                 response = session.request(method, url, timeout=30, **kwargs)
                 response.raise_for_status()  # Raises an exception for 4xx/5xx status codes
+
+                # --- НОВАЯ ПРОВЕРКА ---
+                # Проверяем, не является ли ответ пустым (или содержащим только пробелы).
+                if not response.text.strip():
+                    # Если ответ пустой, считаем это ошибкой соединения и инициируем повтор.
+                    # Это позволит попробовать другой прокси.
+                    raise requests.exceptions.ConnectionError("Received an empty response body. Retrying with a different proxy.")
+
+                # Если все проверки пройдены, считаем запрос успешным
                 logger.info(f"✅ Request successful with proxy {current_proxy}.")
                 return response
 
-            except (requests.exceptions.ProxyError, requests.exceptions.ConnectTimeout, requests.exceptions.ReadTimeout, requests.exceptions.SSLError) as e:
+            # Обрабатываем ошибки, связанные с прокси и общими проблемами соединения.
+            # Сюда же попадет наша новая искусственно созданная ошибка ConnectionError.
+            except (
+                requests.exceptions.ProxyError,
+                requests.exceptions.ConnectTimeout,
+                requests.exceptions.ReadTimeout,
+                requests.exceptions.SSLError,
+                requests.exceptions.ChunkedEncodingError,
+                requests.exceptions.ConnectionError         # <-- Эта ошибка теперь ловится и здесь
+            ) as e:
                 last_exception = e
-                logger.warning(f"❌ Proxy error {current_proxy}: {type(e).__name__}. Attempt {attempt + 1}/{self.max_retries}.")
+                logger.warning(f"❌ Connection/Proxy error with {current_proxy}: {type(e).__name__}. Attempt {attempt + 1}/{self.max_retries}.")
                 if current_proxy:
                     self.proxy_provider.mark_proxy_as_bad(session.proxies)
             
+            # Обрабатываем другие ошибки (например, 404 Not Found), которые не требуют повтора.
             except requests.exceptions.RequestException as e:
-                # For other errors (e.g., 404 Not Found), don't change the proxy
-                logger.warning(f"⚠️️ Request error (not proxy-related): {e}.")
+                logger.warning(f"⚠️️ Request error (not retryable): {e}.")
                 raise e
 
-        # If we reach here, all attempts have failed
+        # Если мы здесь, все попытки исчерпаны
         raise RuntimeError(f"Failed to execute request to {url} after {self.max_retries} attempts. Last error: {last_exception}")
