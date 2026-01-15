@@ -53,16 +53,16 @@ logger = logging.getLogger(__name__)
 _pool: ConnectionPool | None = None
 
 
-def _configure_connection(conn: Connection) -> None:
-    """
-    Configure connection after obtaining from pool.
-    
-    Called automatically for each new connection in the pool.
-    Sets search_path to the specified schema.
-    """
-    schema = settings.pg.db_schema
-    conn.execute(f"SET search_path TO {schema}")
-    logger.debug(f"Connection configured: search_path set to '{schema}'")
+# --- Функция _configure_connection больше не нужна и была удалена ---
+# def _configure_connection(conn: Connection) -> None:
+#     """
+#     Configure connection after obtaining from pool.
+#     Called automatically for each new connection in the pool.
+#     Sets search_path to the specified schema.
+#     """
+#     schema = settings.pg.db_schema
+#     conn.execute(f"SET search_path TO {schema}")
+#     logger.debug(f"Connection configured: search_path set to '{schema}'")
 
 
 def get_pool() -> ConnectionPool:
@@ -88,10 +88,11 @@ def get_pool() -> ConnectionPool:
             conninfo=settings.pg.connection_url,
             min_size=settings.pg.pool_min_size,
             max_size=settings.pg.pool_max_size,
-            configure=_configure_connection,
+            # --- ИЗМЕНЕНИЕ: Удален configure и добавлен options в kwargs ---
             kwargs={
                 "row_factory": dict_row,
                 "connect_timeout": settings.pg.connect_timeout,
+                "options": f"-c search_path={settings.pg.db_schema}",
             },
         )
         

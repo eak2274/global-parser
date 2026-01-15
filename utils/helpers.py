@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from datetime import date, timedelta
+import shutil
 
 def get_decoded_text(response: requests.Response) -> str:
     """

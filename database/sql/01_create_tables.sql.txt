@@ -1,0 +1,168 @@
+-- ==========================================================
+-- КОМПЛЕКСНЫЙ СКРИПТ ПЕРЕСОЗДАНИЯ БАЗЫ ДАННЫХ
+-- ОПАСНО: Полностью удаляет схему 'app' и все ее содержимое!
+-- ==========================================================
+
+-- Начинаем транзакцию. Все команды ниже выполнятся как единое целое.
+BEGIN;
+
+-- --- СОЗДАНИЕ ТАБЛИЦ ---
+
+-- ============================================================================
+-- AREAS (Countries/Regions)
+-- ============================================================================
+
+CREATE TABLE areas (
+    id SERIAL PRIMARY KEY,
+    src_id VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE areas IS 'Geographic areas (countries, regions, continents) where tournaments are held';
+
+COMMENT ON COLUMN areas.id IS 'Unique internal identifier';
+COMMENT ON COLUMN areas.src_id IS 'External identifier from the data source';
+COMMENT ON COLUMN areas.name IS 'Area name (e.g., Argentina, Australia, Asia)';
+COMMENT ON COLUMN areas.created_at IS 'Timestamp when the record was created';
+COMMENT ON COLUMN areas.updated_at IS 'Timestamp when the record was last updated';
+
+
+-- ============================================================================
+-- TOURNAMENTS (Leagues/Competitions)
+-- ============================================================================
+
+CREATE TABLE tournaments (
+    id SERIAL PRIMARY KEY,
+    src_id VARCHAR(50) UNIQUE NOT NULL,
+    area_id INTEGER NOT NULL REFERENCES areas(id) ON DELETE RESTRICT,
+    name VARCHAR(255) NOT NULL,
+    code VARCHAR(50),
+    url VARCHAR(500),
+    logo VARCHAR(255),
+    status VARCHAR(20),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE tournaments IS 'Basketball tournaments, leagues, and competitions';
+
+COMMENT ON COLUMN tournaments.id IS 'Unique internal identifier';
+COMMENT ON COLUMN tournaments.src_id IS 'External identifier from the data source';
+COMMENT ON COLUMN tournaments.area_id IS 'Reference to the geographic area where the tournament is held';
+COMMENT ON COLUMN tournaments.name IS 'Full tournament name (e.g., ARGENTINA: Liga A)';
+COMMENT ON COLUMN tournaments.code IS 'Short tournament code (if available)';
+COMMENT ON COLUMN tournaments.url IS 'Relative URL path to the tournament page on source website';
+COMMENT ON COLUMN tournaments.logo IS 'Filename of the tournament logo image';
+COMMENT ON COLUMN tournaments.status IS 'Tournament status code (0 = active, etc.)';
+COMMENT ON COLUMN tournaments.created_at IS 'Timestamp when the record was created';
+COMMENT ON COLUMN tournaments.updated_at IS 'Timestamp when the record was last updated';
+
+
+-- ============================================================================
+-- TEAMS
+-- ============================================================================
+
+CREATE TABLE teams (
+    id SERIAL PRIMARY KEY,
+    src_id VARCHAR(50) UNIQUE NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    slug VARCHAR(255),
+    abbr VARCHAR(10),
+    logo VARCHAR(255),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE teams IS 'Basketball teams participating in various tournaments';
+
+COMMENT ON COLUMN teams.id IS 'Unique internal identifier';
+COMMENT ON COLUMN teams.src_id IS 'External identifier from the data source';
+COMMENT ON COLUMN teams.name IS 'Full team name (e.g., Illawarra Hawks)';
+COMMENT ON COLUMN teams.slug IS 'URL-friendly team identifier (e.g., illawarra-hawks)';
+COMMENT ON COLUMN teams.abbr IS 'Team abbreviation, typically 3 characters (e.g., ILL)';
+COMMENT ON COLUMN teams.logo IS 'Filename of the team logo image';
+COMMENT ON COLUMN teams.created_at IS 'Timestamp when the record was created';
+COMMENT ON COLUMN teams.updated_at IS 'Timestamp when the record was last updated';
+
+
+-- ============================================================================
+-- GAMES (Matches)
+-- ============================================================================
+
+CREATE TABLE games (
+    id SERIAL PRIMARY KEY,
+    src_id VARCHAR(50) UNIQUE NOT NULL,
+    tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE RESTRICT,
+    home_team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+    away_team_id INTEGER NOT NULL REFERENCES teams(id) ON DELETE RESTRICT,
+    
+    -- Game timing and status
+    game_ts TIMESTAMPTZ NOT NULL,
+    game_end VARCHAR(20) NOT NULL,
+    
+    -- Final scores
+    home_score SMALLINT,
+    away_score SMALLINT,
+    
+    -- Home team quarter scores
+    home_q1 SMALLINT,
+    home_q2 SMALLINT,
+    home_q3 SMALLINT,
+    home_q4 SMALLINT,
+    
+    -- Home team overtime scores
+    home_ot1 SMALLINT,
+    home_ot2 SMALLINT,
+    
+    -- Away team quarter scores
+    away_q1 SMALLINT,
+    away_q2 SMALLINT,
+    away_q3 SMALLINT,
+    away_q4 SMALLINT,
+    
+    -- Away team overtime scores
+    away_ot1 SMALLINT,
+    away_ot2 SMALLINT,
+    
+    -- Metadata
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+COMMENT ON TABLE games IS 'Basketball games with scores by quarter and overtime periods';
+
+COMMENT ON COLUMN games.id IS 'Unique internal identifier';
+COMMENT ON COLUMN games.src_id IS 'External identifier from the data source';
+COMMENT ON COLUMN games.tournament_id IS 'Reference to the tournament this game belongs to';
+COMMENT ON COLUMN games.home_team_id IS 'Reference to the home team';
+COMMENT ON COLUMN games.away_team_id IS 'Reference to the away team';
+COMMENT ON COLUMN games.game_ts IS 'Game start time as timestamp with time zone (UTC, converted from Unix timestamp)';
+COMMENT ON COLUMN games.game_end IS 'How the game ended (standard, overtime, etc.)';
+COMMENT ON COLUMN games.home_score IS 'Final score of the home team';
+COMMENT ON COLUMN games.away_score IS 'Final score of the away team';
+COMMENT ON COLUMN games.home_q1 IS 'Home team points scored in 1st quarter';
+COMMENT ON COLUMN games.home_q2 IS 'Home team points scored in 2nd quarter';
+COMMENT ON COLUMN games.home_q3 IS 'Home team points scored in 3rd quarter';
+COMMENT ON COLUMN games.home_q4 IS 'Home team points scored in 4th quarter';
+COMMENT ON COLUMN games.home_ot1 IS 'Home team points scored in 1st overtime (NULL if no overtime)';
+COMMENT ON COLUMN games.home_ot2 IS 'Home team points scored in 2nd overtime (NULL if no overtime)';
+COMMENT ON COLUMN games.away_q1 IS 'Away team points scored in 1st quarter';
+COMMENT ON COLUMN games.away_q2 IS 'Away team points scored in 2nd quarter';
+COMMENT ON COLUMN games.away_q3 IS 'Away team points scored in 3rd quarter';
+COMMENT ON COLUMN games.away_q4 IS 'Away team points scored in 4th quarter';
+COMMENT ON COLUMN games.away_ot1 IS 'Away team points scored in 1st overtime (NULL if no overtime)';
+COMMENT ON COLUMN games.away_ot2 IS 'Away team points scored in 2nd overtime (NULL if no overtime)';
+COMMENT ON COLUMN games.created_at IS 'Timestamp when the record was created';
+COMMENT ON COLUMN games.updated_at IS 'Timestamp when the record was last updated';
+
+-- ==========================================================
+-- Если все команды выше выполнились без ошибок,
+-- подтверждаем изменения и завершаем транзакцию.
+-- ==========================================================
+COMMIT;
+
+-- ==========================================================
+-- ГОТОВО! База данных полностью пересоздана.
+-- ==========================================================

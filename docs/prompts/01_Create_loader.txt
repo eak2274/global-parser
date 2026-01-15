@@ -1,0 +1,288 @@
+Задача
+------
+Написать скрипт на Python для последовательной обработки списка JSON-элементов, содержащихся во входном файле, и создания/изменения соответствующих сущностей в таблицах БД.
+
+Общий подход состоит в следующем:
+- список содержит элементы, представленные в двухуровневой иерархии: верхний уровень - информация о территории, на которой проводится соревнование (часть света, страна, регион), нижний (дочерний уровень) - список сведений о конкретных играх (каждый элемент дочернего списка - это конкретная игра); 
+- мы обрабатываем элемент, содержащий информацию о соревновании и зависимых от него сущностях (играх)
+- если либо территория, соревнование или игра существует в БД - то информация в соответствующей таблице должна быть обновлена, а на соответствующие записи в других таблицах - корректно проставлены внешние связи (типовая ситуация - территория и турнир уже есть, а игры еще нет - тогда создаем игру и проставляем в ней внешний ключ на турнир)
+- если либо территория, соревнование или игра НЕ существует в БД - то информация в соответствующей таблице должна быть создана
+
+Пример списка JSON-элементов
+----------------------------
+[
+	{
+		"area_src_id": "24",
+		"area_name": "Australia",
+		"tourney_src_id": "Of7riKL9",
+		"tourney_name": "AUSTRALIA: NBL",
+		"tourney_code": null,
+		"tourney_url": "/basketball/australia/nbl/",
+		"tourney_logo": "x8B0m9hD-SYmhRlkG.png",
+		"tourney_status": "0",
+		"results": [
+			{
+				"game_src_id": "AonIhihd",
+				"game_ts": 1765441800,
+				"game_end": "standard",
+				"home_src_id": "W21MSYWs",
+				"away_src_id": "zHGDrK3i",
+				"home_name": "Illawarra Hawks",
+				"away_name": "Brisbane Bullets",
+				"home_slug": "illawarra-hawks",
+				"away_slug": "brisbane-bullets",
+				"home_abbr": "ILL",
+				"away_abbr": "BRI",
+				"home_score": 100,
+				"away_score": 85,
+				"home_q1": 23,
+				"home_q2": 26,
+				"home_q3": 22,
+				"home_q4": 29,
+				"home_ot1": null,
+				"home_ot2": null,
+				"away_q1": 33,
+				"away_q2": 17,
+				"away_q3": 18,
+				"away_q4": 17,
+				"away_ot1": null,
+				"away_ot2": null,
+				"home_logo": "bVLUBtme-0MCD04wA.png",
+				"away_logo": "CWibzvne-2sm3dfDt.png"
+			}
+		]
+	},
+	{
+		"area_src_id": "28",
+		"area_name": "Bahrain",
+		"tourney_src_id": "x0itGkel",
+		"tourney_name": "BAHRAIN: Premier League",
+		"tourney_code": null,
+		"tourney_url": "/basketball/bahrain/premier-league/",
+		"tourney_logo": "hMS0yi7j-xrEpV4xM.png",
+		"tourney_status": "0",
+		"results": [
+			{
+				"game_src_id": "nLb5WA4t",
+				"game_ts": 1765470600,
+				"game_end": "standard",
+				"home_src_id": "boYImEaD",
+				"away_src_id": "zeT5wCN0",
+				"home_name": "Al Hala",
+				"away_name": "Al Muharraq",
+				"home_slug": "al-hala",
+				"away_slug": "al-muharraq",
+				"home_abbr": "HAL",
+				"away_abbr": "MUH",
+				"home_score": 67,
+				"away_score": 97,
+				"home_q1": 10,
+				"home_q2": 18,
+				"home_q3": 15,
+				"home_q4": 24,
+				"home_ot1": null,
+				"home_ot2": null,
+				"away_q1": 21,
+				"away_q2": 24,
+				"away_q3": 31,
+				"away_q4": 21,
+				"away_ot1": null,
+				"away_ot2": null,
+				"home_logo": "l0isNF86-tMyOc9iO.png",
+				"away_logo": "jyOEK7UH-S4f19okp.png"
+			}
+		]
+	},
+	{
+		"area_src_id": "31",
+		"area_name": "Belarus",
+		"tourney_src_id": "MZmUR6r2",
+		"tourney_name": "BELARUS: Premier League",
+		"tourney_code": null,
+		"tourney_url": "/basketball/belarus/premier-league/",
+		"tourney_logo": "2uSZTSQp-EHCPxXwc.png",
+		"tourney_status": "0",
+		"results": [
+			{
+				"game_src_id": "6XayFEXj",
+				"game_ts": 1765459800,
+				"game_end": "standard",
+				"home_src_id": "lv7lEjo6",
+				"away_src_id": "CGvuS6Mp",
+				"home_name": "SDUSHOR Minsk",
+				"away_name": "Rubon II",
+				"home_slug": "sdushor-minsk",
+				"away_slug": "rubon",
+				"home_abbr": "SDU",
+				"away_abbr": "RUB",
+				"home_score": 96,
+				"away_score": 77,
+				"home_q1": 32,
+				"home_q2": 19,
+				"home_q3": 24,
+				"home_q4": 21,
+				"home_ot1": null,
+				"home_ot2": null,
+				"away_q1": 11,
+				"away_q2": 20,
+				"away_q3": 30,
+				"away_q4": 16,
+				"away_ot1": null,
+				"away_ot2": null,
+				"home_logo": "OjEOoRCN-42arRCFH.png",
+				"away_logo": "bLqQvHUH-QNC1j3yB.png"
+			},
+			{
+				"game_src_id": "CUnNxIPc",
+				"game_ts": 1765465200,
+				"game_end": "standard",
+				"home_src_id": "KAKH5m8r",
+				"away_src_id": "8tVlXuMQ",
+				"home_name": "Borisfen 2",
+				"away_name": "Gomel",
+				"home_slug": "borisfen",
+				"away_slug": "gomel",
+				"home_abbr": "BOR",
+				"away_abbr": "GOM",
+				"home_score": 55,
+				"away_score": 99,
+				"home_q1": 19,
+				"home_q2": 15,
+				"home_q3": 12,
+				"home_q4": 9,
+				"home_ot1": null,
+				"home_ot2": null,
+				"away_q1": 28,
+				"away_q2": 22,
+				"away_q3": 21,
+				"away_q4": 28,
+				"away_ot1": null,
+				"away_ot2": null,
+				"home_logo": "OpH7VsWH-WQAiYYlm.png",
+				"away_logo": "2eOWMlUH-QepB34Lk.png"
+			}
+		]
+	}
+]
+
+Структура таблиц в БД описана в прилагаемом скрипте 01_create_tables.sql
+
+***
+
+Данные из JSON-файла представляют собой массив объектов, где каждый объект описывает турнир (tourney), связанный с географической областью (area), и содержит массив результатов (results) — это игры (games) с участием команд (teams). Структура БД включает таблицы: areas (области), tournaments (турниры), teams (команды) и games (игры). Все таблицы имеют уникальный внутренний id (автоинкремент), внешний уникальный ключ src_id (из источника данных) и timestamps created_at/updated_at.
+Ключевые принципы обработки:
+
+Обработка данных должна происходить иерархически: сначала области (areas), затем турниры (tournaments), затем команды (teams) для каждой игры, и наконец игры (games).
+Для каждой сущности (area, tourney, team, game) уникальным идентификатором является src_id. Перед вставкой или обновлением проверяйте наличие записи по src_id:
+Если запись с таким src_idне существует — создайте новую (INSERT). created_at и updated_at установятся автоматически на текущее время (NOW()).
+Если запись существует — обновите её (UPDATE), перезаписав все изменяемые поля (кроме id и created_at). Установите updated_at = NOW().
+
+Связи (foreign keys):
+Турниры ссылаются на области (area_id).
+Игры ссылаются на турниры (tournament_id), домашнюю команду (home_team_id) и гостевую команду (away_team_id).
+
+Перед вставкой связанных сущностей (например, турнира) сначала обработайте родительскую (область) и получите её id.
+Все поля в JSON, которые не имеют прямого маппинга (например, logos команд в играх), используются для обновления соответствующих сущностей (teams).
+Обработка должна быть транзакционной: используйте BEGIN/COMMIT для группы операций, чтобы избежать частичных вставок.
+Конвертации: game_ts в JSON — это Unix-timestamp (секунды с 1970-01-01), преобразуйте его в TIMESTAMPTZ (например, в SQL: TO_TIMESTAMP(game_ts) или эквивалент в вашем языке программирования).
+NULL-значения: Если поле в JSON равно null, вставляйте/обновляйте как NULL в БД.
+
+Маппинг полей по таблицам
+1. Таблица areas (области/страны/регионы)
+
+Когда создавать/обновлять: Для каждого уникального area_src_id в JSON-массиве.
+Проверьте наличие по src_id.
+Если не существует — INSERT.
+Если существует — UPDATE (обновите name, если изменилось; updated_at = NOW()).
+
+Маппинг полей:
+src_id ← area_src_id (уникальный ключ для проверки).
+name ← area_name.
+
+Примечания: Обработайте области первыми, чтобы получить id для турниров. Если несколько турниров имеют одну и ту же область, обработайте её только один раз.
+
+2. Таблица tournaments (турниры/лиги)
+
+Когда создавать/обновлять: Для каждого объекта в JSON-массиве (один объект = один турнир).
+Проверьте наличие по src_id.
+Если не существует — INSERT (сначала найдите/создайте связанную область и используйте её id).
+Если существует — UPDATE (обновите все поля, кроме id; updated_at = NOW()).
+
+Маппинг полей:
+src_id ← tourney_src_id (уникальный ключ для проверки).
+area_id ← Ищите id в areas по area_src_id (если не найдено — создайте область сначала).
+name ← tourney_name.
+code ← tourney_code (может быть null).
+url ← tourney_url.
+logo ← tourney_logo.
+status ← tourney_status.
+
+Примечания: После обработки турнира сохраните его id для вставки игр.
+
+3. Таблица teams (команды)
+
+Когда создавать/обновлять: Для каждой команды в массиве results (домашняя и гостевая в каждой игре).
+Проверьте наличие по src_id (отдельно для home_src_id и away_src_id).
+Если не существует — INSERT.
+Если существует — UPDATE (обновите name, slug, abbr, logo, если изменились; updated_at = NOW()).
+Обработайте команды перед играми, чтобы получить id для home_team_id и away_team_id. Если команда повторяется в разных играх/турнирах, используйте один и тот же src_id для глобальной уникальности.
+
+Маппинг полей:
+src_id ← home_src_id или away_src_id (в зависимости от команды; уникальный ключ для проверки).
+name ← home_name или away_name.
+slug ← home_slug или away_slug.
+abbr ← home_abbr или away_abbr.
+logo ← home_logo или away_logo.
+
+Примечания: Команды глобальны (не привязаны к турнирам напрямую), поэтому src_id обеспечивает уникальность по всей БД.
+
+4. Таблица games (игры/матчи)
+
+Когда создавать/обновлять: Для каждой игры в массиве results внутри турнира.
+Проверьте наличие по src_id.
+Если не существует — INSERT (сначала найдите/создайте турнир и команды, используйте их id).
+Если существует — UPDATE (обновите все поля, кроме id; updated_at = NOW()). Это полезно, если игра обновлена (например, финальные scores после матча).
+
+Маппинг полей:
+src_id ← game_src_id (уникальный ключ для проверки).
+tournament_id ← Ищите id в tournaments по tourney_src_id (текущий турнир из JSON-объекта).
+home_team_id ← Ищите id в teams по home_src_id.
+away_team_id ← Ищите id в teams по away_src_id.
+game_ts ← game_ts (конвертируйте Unix-timestamp в TIMESTAMPTZ, e.g., TO_TIMESTAMP(game_ts) AT TIME ZONE 'UTC').
+game_end ← game_end.
+home_score ← home_score.
+away_score ← away_score.
+home_q1 ← home_q1.
+home_q2 ← home_q2.
+home_q3 ← home_q3.
+home_q4 ← home_q4.
+home_ot1 ← home_ot1 (null, если нет овертайма).
+home_ot2 ← home_ot2 (null, если нет овертайма).
+away_q1 ← away_q1.
+away_q2 ← away_q2.
+away_q3 ← away_q3.
+away_q4 ← away_q4.
+away_ot1 ← away_ot1 (null, если нет овертайма).
+away_ot2 ← away_ot2 (null, если нет овертайма).
+
+Примечания: Если игра имеет овертаймы, поля ot1/ot2 заполняются; иначе — NULL. Убедитесь, что команды и турнир уже существуют перед вставкой.
+
+***
+
+Подключение к БД и работа с объектами в БД
+------------------------------------------
+Подключение к БД полностью сконфигурировано, все настроено, ни в каких изменениях оно не нуждается.
+
+Просьба ознакомиться с прилагаемыми файлами, описывающими параметры работы с БД
+/config.py
+database/connection.py
+
+Необходимо логировать основные этапы процесса с помощью модуля logging, - как минимум, должно быть указано: 
+- полное имя (с указанием пути) обрабатываемого файла
+- количество записей каждого типа (Area, Game, Team, Tournament), которые были созданы
+- количество записей каждого типа (Area, Game, Team, Tournament), которые были обновлены.
+
+Разумеется, необходимо логировать все ошибки.
+
+Каждый запуск создает свой файл лога в подпапке logs папки, из которой запускается скрипт (если папки нет - ее надо создать).
+Имя файла: loader_<timestamp>.log

@@ -1,6 +1,7 @@
 import sys
 import json
 import logging
+from pprint import pprint
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
@@ -8,10 +9,7 @@ from pathlib import Path
 project_root = Path(__file__).resolve().parent.parent
 sys.path.append(str(project_root))
 
-# from utils.fs_helpers import scrape_team_basket_results
+from database.queries import get_tournament_teams
 
-# convert_to_nice_json(date(2025,12,6))
-
-for d in range(-7, 0, 1):
-    dt = datetime.today() + timedelta(days=d)
-    print(dt.date())
+ls = get_tournament_teams(60)
+pprint(ls)
